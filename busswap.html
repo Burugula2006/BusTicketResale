@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BusSwap — Ticket Resale Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #070809;
+  --s1:       #0f1117;
+  --s2:       #171a23;
+  --s3:       #1f2330;
+  --border:   #252936;
+  --border2:  #2e3344;
+
+  /* SELLER = amber/gold */
+  --seller:   #f5a623;
+  --seller2:  #ff7f3f;
+  --seller-bg: rgba(245,166,35,.08);
+
+  /* BUYER = teal/cyan */
+  --buyer:    #00d4aa;
+  --buyer2:   #0099ff;
+  --buyer-bg: rgba(0,212,170,.08);
+
+  --accent:   #f5a623;
+  --green:    #2ecc71;
+  --red:      #e74c3c;
+  --text:     #eceef3;
+  --muted:    #5a6075;
+  --muted2:   #8892a4;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Cabinet Grotesk',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; overflow-x:hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;top:20px;right:20px;z-index:9999;
+  padding:13px 20px;border-radius:10px;font-size:14px;font-weight:500;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  transform:translateY(-80px) scale(.95);opacity:0;
+  transition:all .4s cubic-bezier(.34,1.56,.64,1);
+  max-width:300px;border:1px solid var(--border2);
+  background:var(--s2);
+}
+#toast.show{transform:translateY(0) scale(1);opacity:1}
+#toast.success{border-left:3px solid var(--green)}
+#toast.error{border-left:3px solid var(--red)}
+#toast.info{border-left:3px solid var(--accent)}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(7,8,9,.88);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  height:62px;padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{
+  font-family:'Clash Display',sans-serif;
+  font-size:20px;font-weight:700;letter-spacing:-.3px;
+  display:flex;align-items:center;gap:8px;
+}
+.logo-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--seller),var(--seller2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+.logo em{color:var(--seller);font-style:normal}
+.nav-center{display:flex;align-items:center;gap:4px}
+.nav-tab{
+  padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;
+  color:var(--muted2);cursor:pointer;transition:all .2s;
+  border:1px solid transparent;
+}
+.nav-tab:hover{color:var(--text);background:var(--s2)}
+.nav-tab.active{color:var(--text);background:var(--s2);border-color:var(--border)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.role-badge{
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;
+}
+.role-badge.SELLER{background:var(--seller-bg);color:var(--seller);border:1px solid rgba(245,166,35,.25)}
+.role-badge.BUYER{background:var(--buyer-bg);color:var(--buyer);border:1px solid rgba(0,212,170,.25)}
+.nav-email{font-size:13px;color:var(--muted2)}
+
+/* ── BUTTONS ── */
+.btn{
+  font-family:'Cabinet Grotesk',sans-serif;
+  font-size:14px;font-weight:600;
+  padding:9px 20px;border-radius:9px;border:none;
+  cursor:pointer;transition:all .2s;
+  display:inline-flex;align-items:center;gap:7px;
+  text-decoration:none;
+}
+.btn-seller{background:linear-gradient(135deg,var(--seller),var(--seller2));color:#0a0700}
+.btn-seller:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,166,35,.3)}
+.btn-buyer{background:linear-gradient(135deg,var(--buyer),var(--buyer2));color:#00160f}
+.btn-buyer:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,170,.3)}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--border2)}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted2)}
+.btn-danger{background:rgba(231,76,60,.1);color:var(--red);border:1px solid rgba(231,76,60,.2)}
+.btn-danger:hover{background:rgba(231,76,60,.2)}
+.btn-success{background:rgba(46,204,113,.1);color:var(--green);border:1px solid rgba(46,204,113,.2)}
+.btn-success:hover{background:rgba(46,204,113,.2)}
+.btn-sm{padding:6px 13px;font-size:12px}
+.btn-lg{padding:13px 28px;font-size:15px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+
+/* ── PAGES ── */
+.page{display:none;animation:fadeUp .35s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ════════════════════════════════
+   AUTH PAGE
+════════════════════════════════ */
+#page-auth{
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(245,166,35,.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(0,212,170,.05) 0%, transparent 60%);
+}
+.auth-wrap{width:100%;max-width:900px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:24px;overflow:hidden;border:1px solid var(--border);background:var(--s1)}
+.auth-left{
+  padding:48px 40px;
+  background:linear-gradient(145deg, var(--s2), var(--s1));
+  display:flex;flex-direction:column;justify-content:center;
+  border-right:1px solid var(--border);
+}
+.auth-left h1{font-family:'Clash Display',sans-serif;font-size:34px;font-weight:700;line-height:1.15;margin-bottom:12px}
+.auth-left h1 .highlight-s{color:var(--seller)}
+.auth-left h1 .highlight-b{color:var(--buyer)}
+.auth-left p{color:var(--muted2);font-size:15px;line-height:1.6;margin-bottom:32px}
+.role-cards{display:flex;flex-direction:column;gap:12px}
+.role-card{
+  padding:14px 18px;border-radius:12px;border:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:12px;
+  background:var(--s3);
+}
+.role-card-icon{font-size:22px;margin-top:2px}
+.role-card h4{font-size:14px;font-weight:700;margin-bottom:3px}
+.role-card p{font-size:12px;color:var(--muted2);line-height:1.4}
+.role-card.seller h4{color:var(--seller)}
+.role-card.buyer h4{color:var(--buyer)}
+
+.auth-right{padding:48px 40px}
+.auth-right h2{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:600;margin-bottom:6px}
+.auth-right .sub{color:var(--muted2);font-size:13px;margin-bottom:28px}
+.auth-switcher{
+  display:flex;gap:0;background:var(--s3);border-radius:10px;padding:4px;margin-bottom:24px;
+}
+.auth-sw-btn{
+  flex:1;text-align:center;padding:8px;border-radius:7px;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--muted2);transition:all .2s;
+}
+.auth-sw-btn.active{background:var(--s1);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+
+/* ── FIELD ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--muted2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--s3);border:1px solid var(--border);
+  border-radius:9px;padding:10px 14px;color:var(--text);
+  font-family:'Cabinet Grotesk',sans-serif;font-size:14px;
+  outline:none;transition:border-color .2s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field select option{background:var(--s2)}
+.field textarea{resize:vertical;min-height:80px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Role select pills */
+.role-select{display:flex;gap:10px;margin-bottom:14px}
+.role-pill{
+  flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);
+  cursor:pointer;text-align:center;transition:all .2s;background:var(--s3);
+}
+.role-pill h4{font-size:13px;font-weight:700;margin-bottom:2px}
+.role-pill p{font-size:11px;color:var(--muted2)}
+.role-pill.seller-pill:hover,.role-pill.seller-pill.selected{border-color:var(--seller);background:var(--seller-bg)}
+.role-pill.seller-pill.selected h4{color:var(--seller)}
+.role-pill.buyer-pill:hover,.role-pill.buyer-pill.selected{border-color:var(--buyer);background:var(--buyer-bg)}
+.role-pill.buyer-pill.selected h4{color:var(--buyer)}
+
+/* ════════════════════════════════
+   MAIN APP
+════════════════════════════════ */
+.container{max-width:1160px;margin:0 auto;padding:0 24px}
+.page-body{padding:32px 0 80px}
+
+/* HERO */
+.hero{
+  text-align:center;padding:52px 0 36px;
+  background:radial-gradient(ellipse 80% 40% at 50% 0%, rgba(245,166,35,.06) 0%, transparent 70%);
+}
+.hero h1{font-family:'Clash Display',sans-serif;font-size:clamp(28px,4.5vw,48px);font-weight:700;line-height:1.1;margin-bottom:10px}
+.hero h1 em{
+  font-style:normal;
+  background:linear-gradient(90deg,var(--seller),var(--seller2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero p{color:var(--muted2);font-size:15px;margin-bottom:32px}
+
+/* SEARCH BOX */
+.search-box{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:20px;display:grid;grid-template-columns:1fr 1fr 1fr auto;
+  gap:10px;align-items:end;max-width:780px;margin:0 auto;
+}
+.search-box .field{margin-bottom:0}
+.search-box input{background:var(--s2)}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.section-title{font-family:'Clash Display',sans-serif;font-size:20px;font-weight:600}
+.section-count{font-size:13px;color:var(--muted2);background:var(--s2);padding:4px 12px;border-radius:20px;border:1px solid var(--border)}
+
+/* ── TICKET GRID ── */
+.tickets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.ticket-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:20px;transition:all .25s;position:relative;overflow:hidden;
+}
+.ticket-card::after{
+  content:'';position:absolute;inset:0;border-radius:16px;
+  background:linear-gradient(135deg,rgba(245,166,35,.03),transparent);
+  opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.ticket-card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.ticket-card:hover::after{opacity:1}
+
+.tc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.tc-route{display:flex;align-items:center;gap:8px}
+.tc-city{font-family:'Clash Display',sans-serif;font-size:17px;font-weight:600}
+.tc-arrow{color:var(--muted);font-size:14px}
+.status-pill{
+  font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;
+}
+.status-pill.AVAILABLE{background:rgba(46,204,113,.1);color:var(--green);border:1px solid rgba(46,204,113,.2)}
+.status-pill.SOLD{background:rgba(231,76,60,.1);color:var(--red);border:1px solid rgba(231,76,60,.2)}
+.status-pill.EXPIRED{background:rgba(90,96,117,.1);color:var(--muted2);border:1px solid rgba(90,96,117,.2)}
+
+.tc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tc-tag{
+  background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:3px 9px;font-size:11px;color:var(--muted2);
+}
+.tc-desc{font-size:12px;color:var(--muted2);font-style:italic;margin-bottom:12px;line-height:1.5}
+.tc-bottom{
+  display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--border);padding-top:14px;
+}
+.tc-price{font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:var(--seller)}
+.tc-price-label{font-size:11px;color:var(--muted2)}
+.tc-seller{font-size:12px;color:var(--muted2)}
+.tc-seller span{color:var(--text);font-weight:600}
+.tc-contact{
+  margin-top:12px;padding:10px 14px;border-radius:9px;
+  background:var(--buyer-bg);border:1px solid rgba(0,212,170,.15);
+  font-size:13px;color:var(--buyer);display:flex;align-items:center;gap:8px;
+}
+.tc-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+.stat-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:24px;text-align:center;transition:transform .2s;
+}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-num{font-family:'Clash Display',sans-serif;font-size:44px;font-weight:700;line-height:1}
+.stat-label{font-size:12px;color:var(--muted2);margin-top:8px;text-transform:uppercase;letter-spacing:.5px}
+.stat-card.total .stat-num{color:var(--seller)}
+.stat-card.available .stat-num{color:var(--green)}
+.stat-card.sold .stat-num{color:var(--red)}
+
+/* ── PROFILE ── */
+.profile-wrap{display:grid;grid-template-columns:auto 1fr;gap:24px;max-width:560px}
+.profile-avatar{
+  width:72px;height:72px;border-radius:18px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700;color:#0a0700;
+  flex-shrink:0;
+}
+.profile-avatar.SELLER{background:linear-gradient(135deg,var(--seller),var(--seller2))}
+.profile-avatar.BUYER{background:linear-gradient(135deg,var(--buyer),var(--buyer2))}
+.profile-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:28px}
+.profile-name{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:600;margin-bottom:4px}
+.profile-email{font-size:13px;color:var(--muted2);margin-bottom:20px}
+.profile-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--border);font-size:14px;
+}
+.profile-row:last-child{border-bottom:none}
+.profile-row .lbl{color:var(--muted2);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+
+/* ── BUYER BROWSE ── */
+.buyer-hero{
+  background:linear-gradient(135deg,var(--s2),var(--s1));
+  border:1px solid var(--border);border-radius:20px;padding:32px;
+  margin-bottom:28px;position:relative;overflow:hidden;
+}
+.buyer-hero::before{
+  content:'🔍';position:absolute;right:28px;top:50%;transform:translateY(-50%);
+  font-size:64px;opacity:.08;
+}
+.buyer-hero h2{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:600;margin-bottom:6px}
+.buyer-hero p{color:var(--muted2);font-size:14px}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:60px 24px;grid-column:1/-1}
+.empty-icon{font-size:44px;margin-bottom:14px}
+.empty h3{font-family:'Clash Display',sans-serif;font-size:18px;margin-bottom:8px}
+.empty p{color:var(--muted2);font-size:14px}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+.modal-overlay.open{display:flex;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--s1);border:1px solid var(--border);border-radius:20px;
+  padding:32px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;
+  animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.modal-title{font-family:'Clash Display',sans-serif;font-size:20px;font-weight:600}
+.modal-close{background:var(--s3);border:1px solid var(--border);width:32px;height:32px;border-radius:8px;cursor:pointer;color:var(--muted2);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{color:var(--text);border-color:var(--muted2)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-center{display:flex;justify-content:center;padding:56px;grid-column:1/-1}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* ── INFO BOX ── */
+.info-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--muted2);line-height:1.5}
+.info-box.seller-box{border-color:rgba(245,166,35,.2);background:var(--seller-bg);color:var(--seller)}
+.info-box.buyer-box{border-color:rgba(0,212,170,.2);background:var(--buyer-bg);color:var(--buyer)}
+
+@media(max-width:768px){
+  .auth-wrap{grid-template-columns:1fr}
+  .auth-left{display:none}
+  .search-box{grid-template-columns:1fr 1fr}
+  .search-box .btn-seller,.search-box .btn-buyer{grid-column:span 2}
+  .stats-grid{grid-template-columns:1fr}
+  nav .nav-center{display:none}
+  .profile-wrap{grid-template-columns:1fr}
+}
+@media(max-width:500px){
+  .search-box{grid-template-columns:1fr}
+  .search-box .btn-seller,.search-box .btn-buyer{grid-column:unset}
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ══ NAV ══ -->
+<nav id="main-nav" style="display:none">
+  <div class="logo">
+    <div class="logo-icon">🚌</div>
+    Bus<em>Swap</em>
+  </div>
+  <div class="nav-center" id="nav-tabs"></div>
+  <div class="nav-right">
+    <span class="role-badge" id="nav-role-badge"></span>
+    <span class="nav-email" id="nav-email-txt"></span>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     AUTH PAGE
+══════════════════════════════════════ -->
+<div id="page-auth" class="page active">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div class="auth-wrap">
+
+      <!-- LEFT PANEL -->
+      <div class="auth-left">
+        <h1>Buy & Sell Bus<br/>Tickets <span class="highlight-s">Smarter</span>,<br/><span class="highlight-b">Faster</span></h1>
+        <p>The marketplace for reselling bus tickets. List your unused tickets or find deals below market price.</p>
+        <div class="role-cards">
+          <div class="role-card seller">
+            <div class="role-card-icon">🎟️</div>
+            <div>
+              <h4>Sellers</h4>
+              <p>List your unused tickets and connect with buyers instantly</p>
+            </div>
+          </div>
+          <div class="role-card buyer">
+            <div class="role-card-icon">🔍</div>
+            <div>
+              <h4>Buyers</h4>
+              <p>Browse verified resale tickets at competitive prices</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="auth-right">
+        <h2 id="auth-heading">Welcome Back</h2>
+        <p class="sub" id="auth-sub">Sign in to your BusSwap account</p>
+        <div class="auth-switcher">
+          <div class="auth-sw-btn active" id="sw-login" onclick="switchAuth('login')">Login</div>
+          <div class="auth-sw-btn" id="sw-register" onclick="switchAuth('register')">Register</div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="form-login">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="l-email" placeholder="you@example.com"/>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+          </div>
+          <button class="btn btn-seller btn-lg" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()" id="btn-login">
+            Sign In →
+          </button>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="form-register" style="display:none">
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" id="r-name" placeholder="John Doe"/>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="r-email" placeholder="you@example.com"/>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Password</label>
+              <input type="password" id="r-pass" placeholder="••••••••"/>
+            </div>
+            <div class="field">
+              <label>Phone</label>
+              <input type="text" id="r-phone" placeholder="+91 9999999999"/>
+            </div>
+          </div>
+          <div class="field">
+            <label>I want to</label>
+            <div class="role-select">
+              <div class="role-pill seller-pill" id="pill-seller" onclick="selectRole('SELLER')">
+                <h4>🎟 Sell Tickets</h4>
+                <p>List & manage resale</p>
+              </div>
+              <div class="role-pill buyer-pill" id="pill-buyer" onclick="selectRole('BUYER')">
+                <h4>🔍 Buy Tickets</h4>
+                <p>Browse & contact sellers</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-seller btn-lg" style="width:100%;justify-content:center" onclick="doRegister()" id="btn-register">
+            Create Account →
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SELLER APP
+══════════════════════════════════════ -->
+<div id="page-seller" class="page">
+  <div class="container page-body">
+
+    <!-- DASHBOARD TAB -->
+    <div id="seller-tab-dashboard" class="seller-tab">
+      <div class="hero" style="padding-top:36px">
+        <h1>Your <em>Seller</em> Dashboard</h1>
+        <p>Manage your listings and track your sales</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card total"><div class="stat-num" id="st-total">—</div><div class="stat-label">Total Listings</div></div>
+        <div class="stat-card available"><div class="stat-num" id="st-avail">—</div><div class="stat-label">Available</div></div>
+        <div class="stat-card sold"><div class="stat-num" id="st-sold">—</div><div class="stat-label">Sold</div></div>
+      </div>
+      <div class="section-header">
+        <span class="section-title">My Active Listings</span>
+        <button class="btn btn-seller" onclick="openCreateModal()">+ List New Ticket</button>
+      </div>
+      <div id="seller-my-list" class="tickets-grid"></div>
+    </div>
+
+    <!-- BROWSE TAB -->
+    <div id="seller-tab-browse" class="seller-tab" style="display:none">
+      <div class="hero" style="padding-top:36px">
+        <h1>Browse <em>Marketplace</em></h1>
+        <p>See all available tickets on the platform</p>
+      </div>
+      <div class="search-box" style="margin-bottom:28px">
+        <div class="field"><label>From City</label><input type="text" id="ss-from" placeholder="Mumbai"/></div>
+        <div class="field"><label>To City</label><input type="text" id="ss-to" placeholder="Pune"/></div>
+        <div class="field"><label>Travel Date</label><input type="date" id="ss-date"/></div>
+        <button class="btn btn-seller" onclick="doSellerSearch()">🔍 Search</button>
+      </div>
+      <div class="section-header">
+        <span class="section-title">Available Tickets</span>
+        <span class="section-count" id="seller-browse-count">Loading…</span>
+      </div>
+      <div id="seller-browse-list" class="tickets-grid"></div>
+    </div>
+
+    <!-- MY LISTINGS TAB -->
+    <div id="seller-tab-listings" class="seller-tab" style="display:none">
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">All My Listings</span>
+        <button class="btn btn-seller" onclick="openCreateModal()">+ List New Ticket</button>
+      </div>
+      <div id="seller-all-list" class="tickets-grid"></div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div id="seller-tab-profile" class="seller-tab" style="display:none">
+      <div class="section-title" style="margin-bottom:24px">My Profile</div>
+      <div class="profile-card" style="max-width:520px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <div class="profile-avatar SELLER" id="s-avatar">?</div>
+          <div>
+            <div class="profile-name" id="s-name">—</div>
+            <div class="profile-email" id="s-email">—</div>
+            <span class="role-badge SELLER" style="margin-top:6px;display:inline-block">Seller</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="profile-row"><span class="lbl">Phone</span><span id="s-phone">—</span></div>
+        <div class="profile-row"><span class="lbl">Warnings</span><span id="s-warnings">—</span></div>
+        <div class="profile-row"><span class="lbl">Account Status</span><span id="s-status">—</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     BUYER APP
+══════════════════════════════════════ -->
+<div id="page-buyer" class="page">
+  <div class="container page-body">
+
+    <!-- BROWSE TAB -->
+    <div id="buyer-tab-browse" class="buyer-tab">
+      <div class="hero" style="padding-top:36px;background:radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,212,170,.06) 0%, transparent 70%)">
+        <h1 style="background:linear-gradient(90deg,var(--buyer),var(--buyer2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline">Find Your Ticket</h1>
+        <p style="margin-top:10px">Search thousands of resale bus tickets below market price</p>
+      </div>
+      <div class="search-box" style="margin-bottom:32px">
+        <div class="field"><label>From City</label><input type="text" id="bs-from" placeholder="Mumbai"/></div>
+        <div class="field"><label>To City</label><input type="text" id="bs-to" placeholder="Pune"/></div>
+        <div class="field"><label>Travel Date</label><input type="date" id="bs-date"/></div>
+        <button class="btn btn-buyer" onclick="doBuyerSearch()">🔍 Search</button>
+      </div>
+      <div class="section-header">
+        <span class="section-title">Available Tickets</span>
+        <span class="section-count" id="buyer-browse-count">Loading…</span>
+      </div>
+      <div id="buyer-browse-list" class="tickets-grid"></div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div id="buyer-tab-profile" class="buyer-tab" style="display:none">
+      <div class="section-title" style="margin-bottom:24px">My Profile</div>
+      <div class="profile-card" style="max-width:520px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <div class="profile-avatar BUYER" id="b-avatar">?</div>
+          <div>
+            <div class="profile-name" id="b-name">—</div>
+            <div class="profile-email" id="b-email">—</div>
+            <span class="role-badge BUYER" style="margin-top:6px;display:inline-block">Buyer</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="profile-row"><span class="lbl">Phone</span><span id="b-phone">—</span></div>
+        <div class="profile-row"><span class="lbl">Warnings</span><span id="b-warnings">—</span></div>
+        <div class="profile-row"><span class="lbl">Account Status</span><span id="b-status">—</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ CREATE TICKET MODAL ══ -->
+<div class="modal-overlay" id="modal-create">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🎟 List a Ticket for Resale</div>
+      <button class="modal-close" onclick="closeModal('modal-create')">✕</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>From City</label><input type="text" id="c-from" placeholder="Mumbai"/></div>
+      <div class="field"><label>To City</label><input type="text" id="c-to" placeholder="Pune"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Travel Date</label><input type="date" id="c-date"/></div>
+      <div class="field"><label>Travel Time</label><input type="time" id="c-time"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Bus Operator</label><input type="text" id="c-operator" placeholder="VRL, Orange Travels…"/></div>
+      <div class="field"><label>Bus Type</label>
+        <select id="c-bustype">
+          <option>Sleeper</option><option>Semi-Sleeper</option><option>Seater</option>
+          <option>AC Sleeper</option><option>AC Seater</option><option>Volvo</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Seat Number</label><input type="text" id="c-seat" placeholder="A1"/></div>
+      <div class="field"><label>Contact Number</label><input type="text" id="c-contact" placeholder="+91 9999999999"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Original Price (₹)</label><input type="number" id="c-orig" placeholder="800"/></div>
+      <div class="field"><label>Resale Price (₹)</label><input type="number" id="c-resale" placeholder="600"/></div>
+    </div>
+    <div class="field"><label>Description (optional)</label><textarea id="c-desc" placeholder="Change of plans, urgent sale…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create')">Cancel</button>
+      <button class="btn btn-seller" onclick="doCreateTicket()">List Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT TICKET MODAL ══ -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Listing</div>
+      <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <input type="hidden" id="e-id"/>
+    <div class="field"><label>Resale Price (₹)</label><input type="number" id="e-price" placeholder="600"/></div>
+    <div class="field"><label>Contact Number</label><input type="text" id="e-contact" placeholder="+91 9999999999"/></div>
+    <div class="field"><label>Description</label><textarea id="e-desc" placeholder="Any notes…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancel</button>
+      <button class="btn btn-seller" onclick="doUpdateTicket()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const BASE = 'http://localhost:8080';
+let token = localStorage.getItem('bs_token') || null;
+let userRole = localStorage.getItem('bs_role') || null;
+let userEmail = localStorage.getItem('bs_email') || null;
+let selectedRole = null;
+
+// ── INIT ──
+window.onload = () => { if (token && userRole) bootApp(); };
+
+// ── API ──
+async function api(method, path, body = null) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BASE + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+// ── TOAST ──
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  setTimeout(() => { el.className = '' }, 3200);
+}
+
+// ── AUTH ──
+function switchAuth(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('sw-login').classList.toggle('active', isLogin);
+  document.getElementById('sw-register').classList.toggle('active', !isLogin);
+  document.getElementById('form-login').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('form-register').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('auth-heading').textContent = isLogin ? 'Welcome Back' : 'Create Account';
+  document.getElementById('auth-sub').textContent = isLogin ? 'Sign in to your BusSwap account' : 'Join thousands of ticket traders';
+}
+
+function selectRole(role) {
+  selectedRole = role;
+  document.getElementById('pill-seller').classList.toggle('selected', role === 'SELLER');
+  document.getElementById('pill-buyer').classList.toggle('selected', role === 'BUYER');
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const password = document.getElementById('l-pass').value;
+  if (!email || !password) return toast('Please fill all fields', 'error');
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in…';
+  try {
+    const d = await api('POST', '/api/auth/login', { email, password });
+    token = d.token; userRole = d.role; userEmail = d.email;
+    localStorage.setItem('bs_token', token);
+    localStorage.setItem('bs_role', userRole);
+    localStorage.setItem('bs_email', userEmail);
+    toast('Welcome back! 👋', 'success');
+    bootApp();
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Sign In →';
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('r-name').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const password = document.getElementById('r-pass').value;
+  const phoneNumber = document.getElementById('r-phone').value.trim();
+  if (!name || !email || !password || !phoneNumber) return toast('Please fill all fields', 'error');
+  if (!selectedRole) return toast('Please select a role — Buyer or Seller', 'error');
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+  try {
+    await api('POST', '/api/auth/register', { name, email, password, phoneNumber, role: selectedRole });
+    toast('Account created! Please login.', 'success');
+    switchAuth('login');
+    document.getElementById('l-email').value = email;
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Create Account →';
+  }
+}
+
+function doLogout() {
+  token = userRole = userEmail = null;
+  localStorage.removeItem('bs_token');
+  localStorage.removeItem('bs_role');
+  localStorage.removeItem('bs_email');
+  document.getElementById('main-nav').style.display = 'none';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-auth').classList.add('active');
+  toast('Logged out', 'info');
+}
+
+// ── BOOT APP ──
+function bootApp() {
+  document.getElementById('page-auth').classList.remove('active');
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('nav-role-badge').textContent = userRole;
+  document.getElementById('nav-role-badge').className = 'role-badge ' + userRole;
+  document.getElementById('nav-email-txt').textContent = userEmail;
+
+  if (userRole === 'SELLER') bootSeller();
+  else bootBuyer();
+}
+
+// ══════════════════════════════
+// SELLER FLOW
+// ══════════════════════════════
+const SELLER_TABS = [
+  { id: 'dashboard', label: '📊 Dashboard' },
+  { id: 'listings',  label: '📋 My Listings' },
+  { id: 'browse',    label: '🔍 Browse' },
+  { id: 'profile',   label: '👤 Profile' },
+];
+
+function bootSeller() {
+  buildNavTabs(SELLER_TABS, 'seller', 'dashboard');
+  document.getElementById('page-seller').classList.add('active');
+  loadSellerDashboard();
+}
+
+function switchSellerTab(name) {
+  document.querySelectorAll('.seller-tab').forEach(t => t.style.display = 'none');
+  document.getElementById('seller-tab-' + name).style.display = 'block';
+  highlightNavTab(name);
+  if (name === 'dashboard') loadSellerDashboard();
+  if (name === 'listings')  loadSellerAllListings();
+  if (name === 'browse')    loadSellerBrowse();
+  if (name === 'profile')   loadProfile('seller');
+}
+
+async function loadSellerDashboard() {
+  try {
+    const d = await api('GET', '/api/dashboard/stats');
+    document.getElementById('st-total').textContent = d.totalListings;
+    document.getElementById('st-avail').textContent = d.availableTickets;
+    document.getElementById('st-sold').textContent = d.soldTickets;
+  } catch(e) { toast('Could not load stats', 'error'); }
+  const el = document.getElementById('seller-my-list');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', '/api/users/my-listings');
+    const avail = tickets.filter(t => t.status === 'AVAILABLE');
+    renderTickets(el, avail, true);
+  } catch(e) { el.innerHTML = emptyHtml('No listings yet', 'Create your first listing!'); }
+}
+
+async function loadSellerAllListings() {
+  const el = document.getElementById('seller-all-list');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', '/api/users/my-listings');
+    renderTickets(el, tickets, true);
+  } catch(e) { el.innerHTML = emptyHtml('No listings yet', 'Create your first listing!'); }
+}
+
+async function loadSellerBrowse() {
+  const el = document.getElementById('seller-browse-list');
+  const cnt = document.getElementById('seller-browse-count');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', '/api/tickets');
+    cnt.textContent = tickets.length + ' tickets';
+    renderTickets(el, tickets, false, false);
+  } catch(e) { el.innerHTML = emptyHtml('Could not load tickets', e.message); }
+}
+
+async function doSellerSearch() {
+  const fromCity = document.getElementById('ss-from').value.trim();
+  const toCity = document.getElementById('ss-to').value.trim();
+  const travelDate = document.getElementById('ss-date').value;
+  if (!fromCity || !toCity || !travelDate) return toast('Fill all search fields', 'error');
+  const el = document.getElementById('seller-browse-list');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', `/api/tickets/search?fromCity=${encodeURIComponent(fromCity)}&toCity=${encodeURIComponent(toCity)}&travelDate=${travelDate}`);
+    document.getElementById('seller-browse-count').textContent = tickets.length + ' results';
+    renderTickets(el, tickets, false, false);
+  } catch(e) { el.innerHTML = emptyHtml('No results', e.message); }
+}
+
+// ══════════════════════════════
+// BUYER FLOW
+// ══════════════════════════════
+const BUYER_TABS = [
+  { id: 'browse',  label: '🔍 Browse Tickets' },
+  { id: 'profile', label: '👤 Profile' },
+];
+
+function bootBuyer() {
+  buildNavTabs(BUYER_TABS, 'buyer', 'browse');
+  document.getElementById('page-buyer').classList.add('active');
+  loadBuyerBrowse();
+}
+
+function switchBuyerTab(name) {
+  document.querySelectorAll('.buyer-tab').forEach(t => t.style.display = 'none');
+  document.getElementById('buyer-tab-' + name).style.display = 'block';
+  highlightNavTab(name);
+  if (name === 'browse')  loadBuyerBrowse();
+  if (name === 'profile') loadProfile('buyer');
+}
+
+async function loadBuyerBrowse() {
+  const el = document.getElementById('buyer-browse-list');
+  const cnt = document.getElementById('buyer-browse-count');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', '/api/tickets');
+    cnt.textContent = tickets.length + ' tickets available';
+    renderTickets(el, tickets, false, true);
+  } catch(e) { el.innerHTML = emptyHtml('Could not load tickets', e.message); }
+}
+
+async function doBuyerSearch() {
+  const fromCity = document.getElementById('bs-from').value.trim();
+  const toCity = document.getElementById('bs-to').value.trim();
+  const travelDate = document.getElementById('bs-date').value;
+  if (!fromCity || !toCity || !travelDate) return toast('Fill all search fields', 'error');
+  const el = document.getElementById('buyer-browse-list');
+  el.innerHTML = loadingHtml();
+  try {
+    const tickets = await api('GET', `/api/tickets/search?fromCity=${encodeURIComponent(fromCity)}&toCity=${encodeURIComponent(toCity)}&travelDate=${travelDate}`);
+    document.getElementById('buyer-browse-count').textContent = tickets.length + ' results';
+    renderTickets(el, tickets, false, true);
+  } catch(e) { el.innerHTML = emptyHtml('No results', e.message); }
+}
+
+// ══════════════════════════════
+// PROFILE (shared)
+// ══════════════════════════════
+async function loadProfile(role) {
+  try {
+    const p = await api('GET', '/api/users/profile');
+    const prefix = role === 'seller' ? 's' : 'b';
+    document.getElementById(prefix + '-avatar').textContent = p.name ? p.name[0].toUpperCase() : '?';
+    document.getElementById(prefix + '-name').textContent = p.name;
+    document.getElementById(prefix + '-email').textContent = p.email;
+    document.getElementById(prefix + '-phone').textContent = p.phoneNumber || '—';
+    document.getElementById(prefix + '-warnings').textContent = p.warningCount ?? 0;
+    const statusEl = document.getElementById(prefix + '-status');
+    statusEl.textContent = p.accountStatus;
+    statusEl.style.color = p.accountStatus === 'ACTIVE' ? 'var(--green)' : 'var(--red)';
+  } catch(e) { toast('Could not load profile', 'error'); }
+}
+
+// ══════════════════════════════
+// TICKET ACTIONS
+// ══════════════════════════════
+function openCreateModal() {
+  document.getElementById('modal-create').classList.add('open');
+}
+
+async function doCreateTicket() {
+  const body = {
+    fromCity:      document.getElementById('c-from').value.trim(),
+    toCity:        document.getElementById('c-to').value.trim(),
+    travelDate:    document.getElementById('c-date').value,
+    travelTime:    document.getElementById('c-time').value + ':00',
+    busOperator:   document.getElementById('c-operator').value.trim(),
+    busType:       document.getElementById('c-bustype').value,
+    seatNumber:    document.getElementById('c-seat').value.trim(),
+    originalPrice: parseFloat(document.getElementById('c-orig').value),
+    resalePrice:   parseFloat(document.getElementById('c-resale').value),
+    contactNumber: document.getElementById('c-contact').value.trim(),
+    description:   document.getElementById('c-desc').value.trim(),
+  };
+  if (!body.fromCity||!body.toCity||!body.travelDate||!body.travelTime||!body.busOperator||!body.seatNumber||!body.contactNumber)
+    return toast('Please fill all required fields', 'error');
+  try {
+    const r = await api('POST', '/api/tickets', body);
+    toast(r.message || 'Ticket listed!', 'success');
+    closeModal('modal-create');
+    loadSellerDashboard();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function openEditModal(id, price, contact, desc) {
+  document.getElementById('e-id').value = id;
+  document.getElementById('e-price').value = price;
+  document.getElementById('e-contact').value = contact;
+  document.getElementById('e-desc').value = desc;
+  document.getElementById('modal-edit').classList.add('open');
+}
+
+async function doUpdateTicket() {
+  const id = document.getElementById('e-id').value;
+  const body = {
+    resalePrice:   parseFloat(document.getElementById('e-price').value),
+    contactNumber: document.getElementById('e-contact').value.trim(),
+    description:   document.getElementById('e-desc').value.trim(),
+  };
+  try {
+    const r = await api('PUT', `/api/tickets/${id}`, body);
+    toast(r.message || 'Updated!', 'success');
+    closeModal('modal-edit');
+    loadSellerAllListings();
+    loadSellerDashboard();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function doMarkSold(id) {
+  if (!confirm('Mark this ticket as sold?')) return;
+  try {
+    const r = await api('PATCH', `/api/tickets/${id}/sold`);
+    toast(r.message || 'Marked as sold!', 'success');
+    loadSellerDashboard();
+    loadSellerAllListings();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function doDelete(id) {
+  if (!confirm('Delete this ticket? This cannot be undone.')) return;
+  try {
+    const r = await api('DELETE', `/api/tickets/${id}`);
+    toast(r.message || 'Deleted!', 'success');
+    loadSellerDashboard();
+    loadSellerAllListings();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ══════════════════════════════
+// RENDER HELPERS
+// ══════════════════════════════
+function renderTickets(container, tickets, isOwner, isBuyer = false) {
+  if (!tickets.length) {
+    container.innerHTML = emptyHtml('No tickets found', isOwner ? 'List your first ticket above!' : 'Try a different search or check back later.');
+    return;
+  }
+  container.innerHTML = tickets.map(t => ticketCard(t, isOwner, isBuyer)).join('');
+}
+
+function ticketCard(t, isOwner, isBuyer) {
+  const actions = isOwner
+    ? `<div class="tc-actions">
+        ${t.status === 'AVAILABLE'
+          ? `<button class="btn btn-sm btn-success" onclick="doMarkSold(${t.id})">✓ Mark Sold</button>
+             <button class="btn btn-sm btn-ghost" onclick="openEditModal(${t.id},${t.resalePrice},'${esc(t.contactNumber)}','${esc(t.description||'')}')">✏ Edit</button>
+             <button class="btn btn-sm btn-danger" onclick="doDelete(${t.id})">🗑 Delete</button>`
+          : `<span style="font-size:12px;color:var(--muted2)">No actions available</span>`
+        }
+       </div>`
+    : (isBuyer && t.status === 'AVAILABLE'
+        ? `<div class="tc-contact">📞 ${esc(t.contactNumber)}</div>`
+        : '');
+
+  return `<div class="ticket-card">
+    <div class="tc-top">
+      <div class="tc-route">
+        <span class="tc-city">${esc(t.fromCity)}</span>
+        <span class="tc-arrow">→</span>
+        <span class="tc-city">${esc(t.toCity)}</span>
+      </div>
+      <span class="status-pill ${t.status}">${t.status}</span>
+    </div>
+    <div class="tc-tags">
+      <span class="tc-tag">📅 ${t.travelDate}</span>
+      <span class="tc-tag">🕐 ${t.travelTime}</span>
+      <span class="tc-tag">🚌 ${esc(t.busOperator)}</span>
+      <span class="tc-tag">💺 ${esc(t.busType)}</span>
+      <span class="tc-tag">🔢 Seat ${esc(t.seatNumber)}</span>
+    </div>
+    ${t.description ? `<div class="tc-desc">"${esc(t.description)}"</div>` : ''}
+    <div class="tc-bottom">
+      <div><div class="tc-price">₹${t.resalePrice}</div><div class="tc-price-label">Resale price</div></div>
+      <div class="tc-seller">by <span>${esc(t.sellerName||'—')}</span></div>
+    </div>
+    ${actions}
+  </div>`;
+}
+
+function emptyHtml(title, sub) {
+  return `<div class="empty"><div class="empty-icon">🎟</div><h3>${title}</h3><p>${sub}</p></div>`;
+}
+function loadingHtml() {
+  return `<div class="loading-center"><div class="spinner"></div></div>`;
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ══════════════════════════════
+// NAV TABS
+// ══════════════════════════════
+function buildNavTabs(tabs, role, activeId) {
+  const container = document.getElementById('nav-tabs');
+  container.innerHTML = tabs.map(t =>
+    `<div class="nav-tab ${t.id === activeId ? 'active' : ''}" id="ntab-${t.id}" onclick="switch${capitalize(role)}Tab('${t.id}')">${t.label}</div>`
+  ).join('');
+}
+function highlightNavTab(id) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById('ntab-' + id);
+  if (el) el.classList.add('active');
+}
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ── MODAL UTILS ──
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
