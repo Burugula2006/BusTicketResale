@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚌 Bus Ticket Resale Platform
+# 🚌 (BUS SWAP) Bus Ticket Resale Platform
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6DB33F?style=flat-square&logo=spring-boot&logoColor=white)
